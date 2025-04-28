@@ -7,6 +7,7 @@ const sfnClient = new SFNClient({})
 const stateMachineArn = process.env.STATE_MACHINE_ARN
 
 export async function invokeTraining(event: APIGatewayProxyEvent) {
+    console.log(event)
     const parsedEvent = await parse(event)
     
     console.log(parsedEvent)
@@ -22,7 +23,7 @@ export async function invokeTraining(event: APIGatewayProxyEvent) {
     }
     const s3Url = await uploadToS3(fileBuffer, username, modelName)
 
-    await sfnClient.send(
+    const response = await sfnClient.send(
         new StartExecutionCommand({
             stateMachineArn,
             input: JSON.stringify({
@@ -37,6 +38,7 @@ export async function invokeTraining(event: APIGatewayProxyEvent) {
         statusCode: 200,
         body: JSON.stringify({
             message: 'Training invoked',
+            stepFunctionExecutionArn: response.executionArn,
         }),
     }
 }
