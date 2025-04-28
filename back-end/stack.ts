@@ -11,7 +11,7 @@ export class MatefaceStack extends cdk.Stack {
     constructor(scope: Construct, id: string, props?: cdk.StackProps) {
         super(scope, id, props)
 
-        const bucket = new cdk.aws_s3.Bucket(this, 'MatefaceModelsBucket', {
+        const trainingDataBucket = new cdk.aws_s3.Bucket(this, 'MatefaceTrainingDataBucket', {
             bucketName: trainingBucketName,
             removalPolicy: cdk.RemovalPolicy.DESTROY,
         })
@@ -45,13 +45,76 @@ export class MatefaceStack extends cdk.Stack {
                 }
             )
 
+        const continueTrainingLambda = new cdk.aws_lambda_nodejs.NodejsFunction(
+            this,
+            'ContinueTrainingLambda',
+            {
+                entry: path.join(
+                    __dirname,
+                    './api/handlers/continueTraining.ts'
+                ),
+                handler: 'handler',
+                runtime,
+                environment: {
+                    TRAINING_BUCKET_NAME: process.env.TRAINING_BUCKET_NAME!,
+                },
+            }
+        )
+
+        const waitForWebhookState =
+            new cdk.aws_stepfunctions_tasks.LambdaInvoke(
+                this,
+                'WaitForWebhookState',
+                {
+                    lambdaFunction: continueTrainingLambda,
+                    integrationPattern:
+                        cdk.aws_stepfunctions.IntegrationPattern
+                            .WAIT_FOR_TASK_TOKEN,
+                    payload: cdk.aws_stepfunctions.TaskInput.fromObject({
+                        token: cdk.aws_stepfunctions.JsonPath.taskToken,
+                        input: cdk.aws_stepfunctions.JsonPath.stringAt('$'),
+                    }),
+                }
+            )
+
+        const successState = new cdk.aws_stepfunctions.Succeed(
+            this,
+            'SuccessState'
+        )
+        const failState = new cdk.aws_stepfunctions.Fail(this, 'FailState', {
+            cause: 'Training Failed',
+            error: 'TrainingError',
+        })
+
         const trainingStateMachine = new cdk.aws_stepfunctions.StateMachine(
             this,
             'TrainingStateMachine',
             {
-                definition: requestTrainingLambdaDefinition,
+                definition: requestTrainingLambdaDefinition
+                    .next(waitForWebhookState)
+                    .next(
+                        new cdk.aws_stepfunctions.Choice(
+                            this,
+                            'CheckWebhookStatus'
+                        )
+                            .when(
+                                cdk.aws_stepfunctions.Condition.stringEquals(
+                                    '$.status',
+                                    'succeeded'
+                                ),
+                                successState
+                            )
+                            .otherwise(failState)
+                    ),
                 stateMachineName: 'TrainingStateMachine',
             }
+        )
+
+        continueTrainingLambda.addToRolePolicy(
+            new cdk.aws_iam.PolicyStatement({
+                actions: ['states:SendTaskSuccess', 'states:SendTaskFailure'],
+                resources: [trainingStateMachine.stateMachineArn],
+            })
         )
 
         const invokeTrainingLambda = new cdk.aws_lambda_nodejs.NodejsFunction(
@@ -72,13 +135,30 @@ export class MatefaceStack extends cdk.Stack {
         invokeTrainingLambda.addToRolePolicy(
             new cdk.aws_iam.PolicyStatement({
                 actions: ['s3:*'],
-                resources: [bucket.bucketArn, `${bucket.bucketArn}/*`],
+                resources: [trainingDataBucket.bucketArn, `${trainingDataBucket.bucketArn}/*`],
             })
         )
 
         invokeTrainingLambda.addToRolePolicy(
             new cdk.aws_iam.PolicyStatement({
                 actions: ['states:StartExecution'],
+                resources: [trainingStateMachine.stateMachineArn],
+            })
+        )
+
+        const statusTrainingLambda = new cdk.aws_lambda_nodejs.NodejsFunction(
+            this,
+            'StatusTrainingLambda',
+            {
+                entry: path.join(__dirname, './api/handlers/statusTraining.ts'),
+                handler: 'handler',
+                runtime,
+            }
+        )
+
+        statusTrainingLambda.addToRolePolicy(
+            new cdk.aws_iam.PolicyStatement({
+                actions: ['states:DescribeExecution'],
                 resources: [trainingStateMachine.stateMachineArn],
             })
         )
@@ -92,6 +172,26 @@ export class MatefaceStack extends cdk.Stack {
                 new cdk.aws_apigatewayv2_integrations.HttpLambdaIntegration(
                     'TrainingIntegration',
                     invokeTrainingLambda
+                ),
+        })
+
+        api.addRoutes({
+            path: '/training/continue',
+            methods: [cdk.aws_apigatewayv2.HttpMethod.POST],
+            integration:
+                new cdk.aws_apigatewayv2_integrations.HttpLambdaIntegration(
+                    'TrainingWebhookIntegration',
+                    continueTrainingLambda
+                ),
+        })
+
+        api.addRoutes({
+            path: '/training/{executionArn}/status',
+            methods: [cdk.aws_apigatewayv2.HttpMethod.GET],
+            integration:
+                new cdk.aws_apigatewayv2_integrations.HttpLambdaIntegration(
+                    'TrainingStatusIntegration',
+                    statusTrainingLambda
                 ),
         })
 
