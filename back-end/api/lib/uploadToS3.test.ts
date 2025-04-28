@@ -26,7 +26,7 @@ describe('UploadToS3', () => {
         (getSignedUrl as jest.Mock).mockResolvedValue('https://mocked-signed-url.com');
 
         // Test data
-        const zip = fs.readFileSync(path.join(__dirname, 'test.zip'));
+        const zip = fs.readFileSync(path.join(__dirname, '../test/valid-test.zip'));
         
         // Execute
         const s3Url = await uploadToS3(zip, 'testUser', 'testModel');
@@ -56,7 +56,7 @@ describe('UploadToS3', () => {
         s3Mock.on(PutObjectCommand).rejects(new Error('Upload failed'));
 
         // Test data
-        const zip = fs.readFileSync(path.join(__dirname, 'test.zip'));
+        const zip = fs.readFileSync(path.join(__dirname, '../test/valid-test.zip'));
         
         // Execute and assert
         await expect(uploadToS3(zip, 'testUser', 'testModel'))

@@ -2,31 +2,42 @@ import { invokeTraining } from './invokeTraining'
 import { createTestEvent } from '../lib/apiGatewayTestEvent'
 import { mockClient } from 'aws-sdk-client-mock'
 import { SFNClient, StartExecutionCommand } from '@aws-sdk/client-sfn'
+import * as fs from 'fs'
+import * as path from 'path'
 
 jest.mock('lambda-multipart-parser', () => ({
-    parse: jest.fn().mockResolvedValue({
-        username: 'test',
-        modelName: 'test',
-        files: [{
-            fieldname: 'file',
-            content: Buffer.from('test file content')
-        }]
-    })
+    parse: jest.fn(),
 }))
 
 jest.mock('../lib/uploadToS3', () => ({
     __esModule: true,
-    default: jest.fn().mockResolvedValue('mocked-s3-url')
+    default: jest.fn().mockResolvedValue('mocked-s3-url'),
 }))
 
 const sfnMock = mockClient(SFNClient)
 
 describe('InvokeTrainingLambda', () => {
     beforeEach(() => {
-        sfnMock.reset()
+        jest.resetAllMocks()
     })
 
     it('should invoke the training state machine', async () => {
+        const mockZipBuffer = fs.readFileSync(
+            path.join(__dirname, '../test/valid-test.zip')
+        )
+        require('lambda-multipart-parser').parse.mockResolvedValue({
+            username: 'test',
+            modelName: 'test',
+            files: [
+                {
+                    fieldname: 'file',
+                    filename: 'test.zip',
+                    content: mockZipBuffer,
+                    contentType: 'application/zip',
+                },
+            ],
+        })
+
         sfnMock.on(StartExecutionCommand).resolves({
             executionArn: 'test',
         })
@@ -40,6 +51,77 @@ describe('InvokeTrainingLambda', () => {
             body: JSON.stringify({
                 message: 'Training invoked',
                 stepFunctionExecutionArn: 'test',
+            }),
+        })
+    })
+
+    it('should return a 400 status code if no file is found', async () => {
+        require('lambda-multipart-parser').parse.mockResolvedValue({
+            username: 'test',
+            modelName: 'test',
+            files: [],
+        })
+
+        const testEvent = createTestEvent('dummy content', {
+            'Content-Type': 'multipart/form-data',
+        })
+
+        expect(await invokeTraining(testEvent)).toEqual({
+            statusCode: 400,
+            body: JSON.stringify({ message: 'No file found' }),
+        })
+    })
+
+    it('should return a 400 status code if the file is not a zip file', async () => {
+        require('lambda-multipart-parser').parse.mockResolvedValue({
+            username: 'test',
+            modelName: 'test',
+            files: [
+                {
+                    fieldname: 'file',
+                    filename: 'test.txt',
+                    content: Buffer.from('test file content'),
+                    contentType: 'text/plain',
+                },
+            ],
+        })
+        const testEvent = createTestEvent('dummy content', {
+            'Content-Type': 'multipart/form-data',
+        })
+
+        expect(await invokeTraining(testEvent)).toEqual({
+            statusCode: 400,
+            body: JSON.stringify({
+                message: 'Invalid file format. Please upload a ZIP file.',
+            }),
+        })
+    })
+
+    it('should return a 400 status code if the files in the zip are not jpg, jpeg or png', async () => {
+        const mockZipBuffer = fs.readFileSync(
+            path.join(__dirname, '../test/invalid-test.zip')
+        )
+        require('lambda-multipart-parser').parse.mockResolvedValue({
+            username: 'test',
+            modelName: 'test',
+            files: [
+                {
+                    fieldname: 'file',
+                    filename: 'test.zip',
+                    content: mockZipBuffer,
+                    contentType: 'application/zip',
+                },
+            ],
+        })
+        const testEvent = createTestEvent('dummy content', {
+            'Content-Type': 'multipart/form-data',
+        })
+
+        expect(await invokeTraining(testEvent)).toEqual({
+            statusCode: 400,
+            body: JSON.stringify({
+                message:
+                    'Invalid file types found. All files must be jpg, jpeg, or png. Invalid files: test.txt, __MACOSX/._test.txt',
             }),
         })
     })
