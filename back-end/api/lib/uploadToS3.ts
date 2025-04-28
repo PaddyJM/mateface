@@ -16,15 +16,13 @@ export default async function uploadToS3(
 ) {
     const objectKey = `${username}/${modelName}/${Date.now()}/training_data.zip`
 
-    const s3Response = await s3Client.send(
+    await s3Client.send(
         new PutObjectCommand({
             Bucket: process.env.TRAINING_BUCKET_NAME,
             Key: objectKey,
             Body: zip,
         })
     )
-
-    console.log(s3Response)
 
     const getObjectCommand = new GetObjectCommand({
         Bucket: process.env.TRAINING_BUCKET_NAME,
@@ -34,8 +32,6 @@ export default async function uploadToS3(
     const s3Url = await getSignedUrl(s3Client, getObjectCommand, {
         expiresIn: 60 * 60 * 24,
     })
-
-    console.log(s3Url)
 
     return s3Url
 }
