@@ -7,24 +7,26 @@ dotenv.config({ path: path.resolve(__dirname, '../.env') })
 const trainingBucketName = process.env.TRAINING_BUCKET_NAME
 const runtime = cdk.aws_lambda.Runtime.NODEJS_20_X
 // const architecture = cdk.aws_lambda.Architecture.ARM_64
-export class MatefaceStack extends cdk.Stack {
+const idPrefix = 'Mateface'
+
+export class MatefaceBackEndStack extends cdk.Stack {
     constructor(scope: Construct, id: string, props?: cdk.StackProps) {
         super(scope, id, props)
 
         const trainingDataBucket = new cdk.aws_s3.Bucket(
             this,
-            'MatefaceTrainingDataBucket',
+            `${idPrefix}TrainingDataBucket`,
             {
                 bucketName: trainingBucketName,
                 removalPolicy: cdk.RemovalPolicy.DESTROY,
             }
         )
 
-        const api = new cdk.aws_apigatewayv2.HttpApi(this, 'MatefaceApi')
+        const api = new cdk.aws_apigatewayv2.HttpApi(this, `${idPrefix}Api`)
 
         const requestTrainingLambda = new cdk.aws_lambda_nodejs.NodejsFunction(
             this,
-            'RequestTrainingLambda',
+            `${idPrefix}RequestTrainingLambda`,
             {
                 entry: path.join(
                     __dirname,
@@ -44,7 +46,7 @@ export class MatefaceStack extends cdk.Stack {
         const requestTrainingLambdaDefinition =
             new cdk.aws_stepfunctions_tasks.LambdaInvoke(
                 this,
-                'RequestTrainingLambdaDefinition',
+                `${idPrefix}RequestTrainingLambdaDefinition`,
                 {
                     lambdaFunction: requestTrainingLambda,
                     integrationPattern:
@@ -69,7 +71,7 @@ export class MatefaceStack extends cdk.Stack {
 
         const continueTrainingLambda = new cdk.aws_lambda_nodejs.NodejsFunction(
             this,
-            'ContinueTrainingLambda',
+            `${idPrefix}ContinueTrainingLambda`,
             {
                 entry: path.join(
                     __dirname,
@@ -85,16 +87,20 @@ export class MatefaceStack extends cdk.Stack {
 
         const successState = new cdk.aws_stepfunctions.Succeed(
             this,
-            'SuccessState'
+            `${idPrefix}SuccessState`
         )
-        const failState = new cdk.aws_stepfunctions.Fail(this, 'FailState', {
-            cause: 'Training Failed',
-            error: 'TrainingError',
-        })
+        const failState = new cdk.aws_stepfunctions.Fail(
+            this,
+            `${idPrefix}FailState`,
+            {
+                cause: 'Training Failed',
+                error: 'TrainingError',
+            }
+        )
 
         const trainingStateMachine = new cdk.aws_stepfunctions.StateMachine(
             this,
-            'TrainingStateMachine',
+            `${idPrefix}TrainingStateMachine`,
             {
                 definition: requestTrainingLambdaDefinition.next(
                     new cdk.aws_stepfunctions.Choice(this, 'CheckWebhookStatus')
@@ -120,7 +126,7 @@ export class MatefaceStack extends cdk.Stack {
 
         const invokeTrainingLambda = new cdk.aws_lambda_nodejs.NodejsFunction(
             this,
-            'InvokeTrainingLambda',
+            `${idPrefix}InvokeTrainingLambda`,
             {
                 entry: path.join(__dirname, './api/handlers/invokeTraining.ts'),
                 handler: 'handler',
@@ -152,7 +158,7 @@ export class MatefaceStack extends cdk.Stack {
 
         const statusTrainingLambda = new cdk.aws_lambda_nodejs.NodejsFunction(
             this,
-            'StatusTrainingLambda',
+            `${idPrefix}StatusTrainingLambda`,
             {
                 entry: path.join(__dirname, './api/handlers/statusTraining.ts'),
                 handler: 'handler',
@@ -172,7 +178,7 @@ export class MatefaceStack extends cdk.Stack {
             methods: [cdk.aws_apigatewayv2.HttpMethod.POST],
             integration:
                 new cdk.aws_apigatewayv2_integrations.HttpLambdaIntegration(
-                    'TrainingIntegration',
+                    `${idPrefix}TrainingIntegration`,
                     invokeTrainingLambda
                 ),
         })
@@ -182,7 +188,7 @@ export class MatefaceStack extends cdk.Stack {
             methods: [cdk.aws_apigatewayv2.HttpMethod.POST],
             integration:
                 new cdk.aws_apigatewayv2_integrations.HttpLambdaIntegration(
-                    'TrainingWebhookIntegration',
+                    `${idPrefix}TrainingWebhookIntegration`,
                     continueTrainingLambda
                 ),
         })
@@ -192,12 +198,12 @@ export class MatefaceStack extends cdk.Stack {
             methods: [cdk.aws_apigatewayv2.HttpMethod.GET],
             integration:
                 new cdk.aws_apigatewayv2_integrations.HttpLambdaIntegration(
-                    'TrainingStatusIntegration',
+                    `${idPrefix}TrainingStatusIntegration`,
                     statusTrainingLambda
                 ),
         })
 
-        new cdk.CfnOutput(this, 'ApiEndpoint', {
+        new cdk.CfnOutput(this, `${idPrefix}ApiEndpoint`, {
             value: api.url!,
             description: 'API Gateway endpoint URL',
         })
