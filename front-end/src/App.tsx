@@ -1,8 +1,7 @@
-import useEmblaCarousel from 'embla-carousel-react'
 import { useState } from 'react'
+import Carousel from './components/Carousel'
 
 function App() {
-    const [emblaRef] = useEmblaCarousel({ loop: true })
     const [trainingImages, setTrainingImages] = useState<string[]>([])
 
     const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -16,21 +15,8 @@ function App() {
     }
 
     return (
-        <div className="flex justify-center items-center h-screen">
-            {trainingImages.length > 0 && (
-                <div className="embla" ref={emblaRef}>
-                    <div className="embla__container">
-                        {trainingImages.map((image, index) => (
-                            <div className="embla__slide" key={index}>
-                                <img
-                                    src={image}
-                                    alt={`Training Image ${index + 1}`}
-                                />
-                            </div>
-                        ))}
-                    </div>
-                </div>
-            )}
+        <div>
+            {trainingImages.length > 0 && <Carousel slides={trainingImages} />}
             <input type="file" onChange={handleFileChange} multiple />
         </div>
     )
