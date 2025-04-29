@@ -24,7 +24,19 @@ function App() {
                     <Button>Train AI</Button>
                 </div>
             ) : (
-                <input type="file" onChange={handleFileChange} multiple />
+                <div className="flex flex-col items-center gap-4">
+                    <Button variant="outline" asChild>
+                        <label>
+                            Upload Images
+                            <input
+                                type="file"
+                                onChange={handleFileChange}
+                                multiple
+                                className="hidden"
+                            />
+                        </label>
+                    </Button>
+                </div>
             )}
         </div>
     )
