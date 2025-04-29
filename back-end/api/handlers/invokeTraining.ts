@@ -3,7 +3,6 @@ import { SFNClient, StartExecutionCommand } from '@aws-sdk/client-sfn'
 import { apiErrorHandler } from '../middleware/apiErrorHandler'
 import uploadToS3 from '../lib/uploadToS3'
 import { parse } from 'lambda-multipart-parser'
-import { Readable } from 'stream'
 import * as unzipper from 'unzipper'
 
 const sfnClient = new SFNClient({})

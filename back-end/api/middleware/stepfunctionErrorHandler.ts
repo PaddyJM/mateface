@@ -7,19 +7,12 @@ export function stepfunctionErrorHandler(
         try {
             return await handler(input)
         } catch (error: any) {
-            console.error(error)
             if (error instanceof ZodError) {
-                throw JSON.stringify({
-                    errorType: 'ValidationError',
-                    errorMessage: 'Invalid input',
-                    details: error.format(),
-                })
+                const formattedError = new Error(JSON.stringify(error.format()))
+                formattedError.name = 'ValidationError'
+                throw formattedError
             }
-            throw JSON.stringify({
-                errorType: error.name || 'Error',
-                errorMessage: error.message || 'An unexpected error occurred',
-                details: error,
-            })
+            throw error
         }
     }
 }

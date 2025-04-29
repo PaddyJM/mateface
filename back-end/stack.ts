@@ -11,10 +11,16 @@ export class MatefaceStack extends cdk.Stack {
     constructor(scope: Construct, id: string, props?: cdk.StackProps) {
         super(scope, id, props)
 
-        const trainingDataBucket = new cdk.aws_s3.Bucket(this, 'MatefaceTrainingDataBucket', {
-            bucketName: trainingBucketName,
-            removalPolicy: cdk.RemovalPolicy.DESTROY,
-        })
+        const trainingDataBucket = new cdk.aws_s3.Bucket(
+            this,
+            'MatefaceTrainingDataBucket',
+            {
+                bucketName: trainingBucketName,
+                removalPolicy: cdk.RemovalPolicy.DESTROY,
+            }
+        )
+
+        const api = new cdk.aws_apigatewayv2.HttpApi(this, 'MatefaceApi')
 
         const requestTrainingLambda = new cdk.aws_lambda_nodejs.NodejsFunction(
             this,
@@ -28,6 +34,7 @@ export class MatefaceStack extends cdk.Stack {
                 runtime,
                 environment: {
                     REPLICATE_API_TOKEN: process.env.REPLICATE_API_TOKEN!,
+                    API_URL: api.url!,
                 },
                 // architecture,
                 timeout: cdk.Duration.seconds(300),
@@ -40,8 +47,23 @@ export class MatefaceStack extends cdk.Stack {
                 'RequestTrainingLambdaDefinition',
                 {
                     lambdaFunction: requestTrainingLambda,
-                    payload:
-                        cdk.aws_stepfunctions.TaskInput.fromJsonPathAt('$'),
+                    integrationPattern:
+                        cdk.aws_stepfunctions.IntegrationPattern
+                            .WAIT_FOR_TASK_TOKEN,
+                    payload: cdk.aws_stepfunctions.TaskInput.fromObject({
+                        username:
+                            cdk.aws_stepfunctions.JsonPath.stringAt(
+                                '$.username'
+                            ),
+                        modelName:
+                            cdk.aws_stepfunctions.JsonPath.stringAt(
+                                '$.modelName'
+                            ),
+                        s3Url: cdk.aws_stepfunctions.JsonPath.stringAt(
+                            '$.s3Url'
+                        ),
+                        taskToken: cdk.aws_stepfunctions.JsonPath.taskToken,
+                    }),
                 }
             )
 
@@ -61,22 +83,6 @@ export class MatefaceStack extends cdk.Stack {
             }
         )
 
-        const waitForWebhookState =
-            new cdk.aws_stepfunctions_tasks.LambdaInvoke(
-                this,
-                'WaitForWebhookState',
-                {
-                    lambdaFunction: continueTrainingLambda,
-                    integrationPattern:
-                        cdk.aws_stepfunctions.IntegrationPattern
-                            .WAIT_FOR_TASK_TOKEN,
-                    payload: cdk.aws_stepfunctions.TaskInput.fromObject({
-                        token: cdk.aws_stepfunctions.JsonPath.taskToken,
-                        input: cdk.aws_stepfunctions.JsonPath.stringAt('$'),
-                    }),
-                }
-            )
-
         const successState = new cdk.aws_stepfunctions.Succeed(
             this,
             'SuccessState'
@@ -90,22 +96,17 @@ export class MatefaceStack extends cdk.Stack {
             this,
             'TrainingStateMachine',
             {
-                definition: requestTrainingLambdaDefinition
-                    .next(waitForWebhookState)
-                    .next(
-                        new cdk.aws_stepfunctions.Choice(
-                            this,
-                            'CheckWebhookStatus'
+                definition: requestTrainingLambdaDefinition.next(
+                    new cdk.aws_stepfunctions.Choice(this, 'CheckWebhookStatus')
+                        .when(
+                            cdk.aws_stepfunctions.Condition.stringEquals(
+                                '$.status',
+                                'succeeded'
+                            ),
+                            successState
                         )
-                            .when(
-                                cdk.aws_stepfunctions.Condition.stringEquals(
-                                    '$.status',
-                                    'succeeded'
-                                ),
-                                successState
-                            )
-                            .otherwise(failState)
-                    ),
+                        .otherwise(failState)
+                ),
                 stateMachineName: 'TrainingStateMachine',
             }
         )
@@ -135,7 +136,10 @@ export class MatefaceStack extends cdk.Stack {
         invokeTrainingLambda.addToRolePolicy(
             new cdk.aws_iam.PolicyStatement({
                 actions: ['s3:*'],
-                resources: [trainingDataBucket.bucketArn, `${trainingDataBucket.bucketArn}/*`],
+                resources: [
+                    trainingDataBucket.bucketArn,
+                    `${trainingDataBucket.bucketArn}/*`,
+                ],
             })
         )
 
@@ -162,8 +166,6 @@ export class MatefaceStack extends cdk.Stack {
                 resources: [trainingStateMachine.stateMachineArn],
             })
         )
-
-        const api = new cdk.aws_apigatewayv2.HttpApi(this, 'MatefaceApi')
 
         api.addRoutes({
             path: '/training',
