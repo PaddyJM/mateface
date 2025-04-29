@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import Carousel from './components/Carousel'
+import './App.css'
 
 function App() {
     const [trainingImages, setTrainingImages] = useState<string[]>([])
