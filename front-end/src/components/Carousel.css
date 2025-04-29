@@ -83,7 +83,7 @@
     -webkit-tap-highlight-color: rgba(var(--text-high-contrast-rgb-value), 0.5);
     -webkit-appearance: none;
     appearance: none;
-    background-color: black;
+    background-color: transparent;
     touch-action: manipulation;
     display: inline-flex;
     text-decoration: none;
@@ -99,6 +99,7 @@
     border-radius: 50%;
 }
 .embla__dot:after {
+    background-color: var(--detail-low-contrast);
     box-shadow: inset 0 0 0 0.2rem var(--detail-medium-contrast);
     width: 1.4rem;
     height: 1.4rem;
@@ -108,5 +109,6 @@
     content: '';
 }
 .embla__dot--selected:after {
+    background-color: var(--detail-high-contrast); 
     box-shadow: inset 0 0 0 0.2rem var(--text-body);
 }
