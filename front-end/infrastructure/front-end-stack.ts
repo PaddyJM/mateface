@@ -1,12 +1,13 @@
 import * as cdk from 'aws-cdk-lib'
 import { Construct } from 'constructs'
-// import * as sqs from 'aws-cdk-lib/aws-sqs';
 
-export class InfrastructureStack extends cdk.Stack {
+const idPrefix = 'Mateface'
+
+export class MatefaceFrontEndInfrastructureStack extends cdk.Stack {
     constructor(scope: Construct, id: string, props?: cdk.StackProps) {
         super(scope, id, props)
 
-        const bucket = new cdk.aws_s3.Bucket(this, 'MatefaceWebsiteBucket', {
+        const bucket = new cdk.aws_s3.Bucket(this, `${idPrefix}WebsiteBucket`, {
             publicReadAccess: false,
             blockPublicAccess: cdk.aws_s3.BlockPublicAccess.BLOCK_ALL,
             removalPolicy: cdk.RemovalPolicy.RETAIN,
@@ -18,7 +19,7 @@ export class InfrastructureStack extends cdk.Stack {
         const cloudfrontOriginAccessIdentity =
             new cdk.aws_cloudfront.OriginAccessIdentity(
                 this,
-                'CloudFrontOriginAccessIdentity'
+                `${idPrefix}CloudFrontOriginAccessIdentity`
             )
 
         bucket.addToResourcePolicy(
@@ -36,7 +37,7 @@ export class InfrastructureStack extends cdk.Stack {
         const responseHeaderPolicy =
             new cdk.aws_cloudfront.ResponseHeadersPolicy(
                 this,
-                'SecurityHeadersResponseHeaderPolicy',
+                `${idPrefix}SecurityHeadersResponseHeaderPolicy`,
                 {
                     comment: 'Security headers response header policy',
                     corsBehavior: {
@@ -81,14 +82,14 @@ export class InfrastructureStack extends cdk.Stack {
                 }
             )
 
-        new cdk.aws_s3_deployment.BucketDeployment(this, 'MatefaceWebsite', {
-            sources: [cdk.aws_s3_deployment.Source.asset('../build')],
+        new cdk.aws_s3_deployment.BucketDeployment(this, `${idPrefix}Website`, {
+            sources: [cdk.aws_s3_deployment.Source.asset('../dist')],
             destinationBucket: bucket,
         })
 
         const cloudfrontDistribution = new cdk.aws_cloudfront.Distribution(
             this,
-            'CloudFrontDistribution',
+            `${idPrefix}CloudFrontDistribution`,
             {
                 defaultRootObject: 'index.html',
                 defaultBehavior: {
@@ -102,5 +103,10 @@ export class InfrastructureStack extends cdk.Stack {
                 },
             }
         )
+
+        new cdk.CfnOutput(this, `${idPrefix}CloudFrontDistributionUrl`, {
+            value: cloudfrontDistribution.domainName,
+            description: 'CloudFront distribution URL',
+        })
     }
 }

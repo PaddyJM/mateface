@@ -5,10 +5,7 @@
     "infrastructure": "bin/infrastructure.js"
   },
   "scripts": {
-    "build": "tsc",
-    "watch": "tsc -w",
-    "test": "jest",
-    "cdk": "cdk"
+    "deploy": "cdk deploy"
   },
   "devDependencies": {
     "@types/jest": "^29.5.14",
