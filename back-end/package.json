@@ -5,9 +5,13 @@
     "infrastructure": "bin/infrastructure.js"
   },
   "scripts": {
-    "deploy": "cdk deploy"
+    "deploy": "cdk deploy",
+    "docs": "redocly preview-docs ./docs/openapi.yaml",
+    "docs:build": "redocly build-docs ./docs/openapi.yaml -o ./docs/index.html",
+    "docs:lint": "redocly lint ./docs/openapi.yaml"
   },
   "devDependencies": {
+    "@redocly/cli": "^1.34.2",
     "@types/jest": "^29.5.14",
     "@types/node": "22.7.9",
     "@types/unzipper": "^0.10.11",

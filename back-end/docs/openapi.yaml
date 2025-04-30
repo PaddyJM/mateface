@@ -1,0 +1,74 @@
+openapi: 3.0.4
+info:
+    title: Mateface API
+    description: An API for the Mateface project
+    version: 0.1.0
+
+paths:
+    /training:
+        post:
+            summary: Request AI training
+            description: Request AI training
+            requestBody:
+                content:
+                    multipart/form-data:
+                        schema:
+                            type: object
+                            properties:
+                                username:
+                                    type: string
+                                    description: The username of the user requesting training
+                                modelName:
+                                    type: string
+                                    description: The name the new model will have
+                                file:
+                                    type: file
+                                    description: The zip file containing the images to train the model on
+            responses:
+                '200':
+                    description: AI training requested
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    message:
+                                        type: string
+                                    stepFunctionExecutionArn:
+                                        type: string
+                            example:
+                                message: Training invoked
+                                stepFunctionExecutionArn: arn:aws:states:us-east-1:123456789012:execution:mateface-training-step-function:1234567890
+                '400':
+                    description: Invalid request
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    message:
+                                        type: string
+                            examples:
+                                no_file:
+                                    value:
+                                        message: No file found
+                                not_zip:
+                                    value:
+                                        message: Invalid file format. Please upload a ZIP file.
+                                invalid_zip_contents:
+                                    value:
+                                        message: 'Invalid file types found. All files must be jpg, jpeg, or png. Invalid files: image1.jpg, image2.png'
+                                error_reading_zip:
+                                    value:
+                                        message: Error reading ZIP file contents
+                '500':
+                    description: Internal server error
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    message:
+                                        type: string
+                            example:
+                                message: Internal server error. Please contact your administrator.
