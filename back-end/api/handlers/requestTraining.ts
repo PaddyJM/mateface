@@ -13,14 +13,19 @@ export async function requestTraining(input: any) {
     console.log(input)
     const { username, modelName, s3Url, taskToken } = requestTrainingSchema.parse(input)
 
+    const replicateAccountName = process.env.REPLICATE_ACCOUNT_NAME!
+
     let modelToTrain: Model
     try {
-        modelToTrain = await replicateClient.models.get(username, modelName)
+        modelToTrain = await replicateClient.models.get(
+            replicateAccountName,
+            `${username}/${modelName}`
+        )
     } catch (error) {
         console.log(error)
         modelToTrain = await replicateClient.models.create(
-            username,
-            modelName,
+            replicateAccountName,
+            `${username}/${modelName}`,
             {
                 visibility: 'private',
                 hardware: 'gpu-t4',

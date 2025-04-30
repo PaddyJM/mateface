@@ -37,6 +37,7 @@ export class MatefaceBackEndStack extends cdk.Stack {
                 environment: {
                     REPLICATE_API_TOKEN: process.env.REPLICATE_API_TOKEN!,
                     API_URL: api.url!,
+                    REPLICATE_ACCOUNT_NAME: process.env.REPLICATE_ACCOUNT_NAME!,
                 },
                 // architecture,
                 timeout: cdk.Duration.seconds(300),
