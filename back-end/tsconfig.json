@@ -23,6 +23,7 @@
     "typeRoots": [
       "./node_modules/@types"
     ],
+    "isolatedModules": true
   },
   "exclude": [
     "node_modules",

@@ -6,6 +6,7 @@
   },
   "scripts": {
     "deploy": "cdk deploy",
+    "test": "jest",
     "docs": "redocly preview-docs ./docs/openapi.yaml",
     "docs:build": "redocly build-docs ./docs/openapi.yaml -o ./docs/index.html",
     "docs:lint": "redocly lint ./docs/openapi.yaml"
