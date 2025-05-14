@@ -17,18 +17,18 @@ export class RequestTraining {
             requestTrainingSchema.parse(input)
 
         const replicateAccountName = process.env.REPLICATE_ACCOUNT_NAME!
-
+        const replicateModelName = `${username}-${modelName}`
         let targetModel: Model
         try {
             targetModel = await this.replicateClient.models.get(
                 replicateAccountName,
-                `${username}/${modelName}`
+                replicateModelName
             )
         } catch (error) {
             console.log(error)
             targetModel = await this.replicateClient.models.create(
                 replicateAccountName,
-                `${username}/${modelName}`,
+                replicateModelName,
                 {
                     visibility: 'private',
                     hardware: 'gpu-t4',
@@ -55,7 +55,7 @@ export class RequestTraining {
             TRAINING_MODEL_NAME,
             loraTrainerModel.latest_version.id,
             {
-                destination: `${username}/${modelName}`,
+                destination: `${replicateAccountName}/${replicateModelName}`,
                 input: {
                     input_images: s3Url,
                     hf_token: process.env.HF_API_TOKEN,
