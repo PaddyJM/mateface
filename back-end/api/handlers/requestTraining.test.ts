@@ -1,36 +1,18 @@
-import { requestTraining } from './requestTraining'
 import { Model, Prediction } from 'replicate'
-
-jest.mock('replicate', () => {
-    return {
-        default: class {
-            constructor() {
-                return {
-                    models: {
-                        get: jest
-                            .fn()
-                            .mockResolvedValueOnce({})
-                            .mockResolvedValueOnce({
-                                latest_version: {
-                                    id: 'test',
-                                },
-                            }),
-                        create: jest.fn(),
-                    },
-                    trainings: {
-                        create: jest.fn().mockResolvedValueOnce({
-                            id: 'test',
-                        }),
-                    },
-                }
-            }
-        },
-    }
-})
+import { RequestTraining } from './requestTraining'
 
 describe('requestTraining', () => {
+    let mockReplicateClient: any
     beforeEach(() => {
-        jest.clearAllMocks()
+        mockReplicateClient = {
+            models: {
+                get: jest.fn(),
+                create: jest.fn(),
+            },
+            trainings: {
+                create: jest.fn(),
+            },
+        }
     })
     it('should request training from the replicate API when there is an existing model', async () => {
         const testEvent = {
@@ -52,8 +34,16 @@ describe('requestTraining', () => {
             name: 'test',
             visibility: 'private',
             run_count: 0,
+            latest_version: {
+                id: 'test',
+                created_at: 'test',
+                cog_version: 'test',
+                openapi_schema: {},
+            },
         }
-        // mockModelGet.mockResolvedValueOnce(mockTrainingModel)
+        mockReplicateClient.models.get
+            .mockResolvedValueOnce(mockModel)
+            .mockResolvedValueOnce(mockTrainingModel)
         const mockTraining: Prediction = {
             id: 'test',
             version: 'test',
@@ -68,8 +58,9 @@ describe('requestTraining', () => {
                 cancel: 'test',
             },
         }
-        // mockTrainingCreate.mockResolvedValueOnce(mockTraining)
-        const response = await requestTraining(testEvent)
+        mockReplicateClient.trainings.create.mockResolvedValueOnce(mockTraining)
+        const handler = new RequestTraining(mockReplicateClient)
+        const response = await handler.requestTraining(testEvent)
         expect(response).toEqual({
             trainingId: 'test',
         })

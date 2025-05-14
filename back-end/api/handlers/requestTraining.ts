@@ -2,72 +2,88 @@ import Replicate, { Model } from 'replicate'
 import { requestTrainingSchema } from '../lib/schemas'
 import { stepfunctionErrorHandler } from '../middleware/stepfunctionErrorHandler'
 
-const replicateClient = new Replicate({
-    auth: process.env.REPLICATE_API_TOKEN,
-})
-
 const TRAINING_MODEL_USERNAME = 'ostris'
 const TRAINING_MODEL_NAME = 'flux-dev-lora-trainer'
 
-export async function requestTraining(input: any) {
-    console.log(input)
-    const { username, modelName, s3Url, taskToken } = requestTrainingSchema.parse(input)
+let replicateClient: Replicate
 
-    const replicateAccountName = process.env.REPLICATE_ACCOUNT_NAME!
+export class RequestTraining {
+    private replicateClient: Replicate
+    constructor(replicateClient: Replicate) {
+        this.replicateClient = replicateClient
+    }
 
-    let modelToTrain: Model
-    try {
-        modelToTrain = await replicateClient.models.get(
-            replicateAccountName,
-            `${username}/${modelName}`
+    async requestTraining(input: any) {
+        console.log(input)
+        const { username, modelName, s3Url, taskToken } =
+            requestTrainingSchema.parse(input)
+
+        const replicateAccountName = process.env.REPLICATE_ACCOUNT_NAME!
+
+        let modelToTrain: Model
+        try {
+            modelToTrain = await this.replicateClient.models.get(
+                replicateAccountName,
+                `${username}/${modelName}`
+            )
+        } catch (error) {
+            console.log(error)
+            modelToTrain = await this.replicateClient.models.create(
+                replicateAccountName,
+                `${username}/${modelName}`,
+                {
+                    visibility: 'private',
+                    hardware: 'gpu-t4',
+                    description: 'A fine-tuned FLUX.1 model',
+                }
+            )
+        }
+
+        console.log('modelToTrain', modelToTrain)
+
+        const trainingModel = await this.replicateClient.models.get(
+            TRAINING_MODEL_USERNAME,
+            TRAINING_MODEL_NAME
         )
-    } catch (error) {
-        console.log(error)
-        modelToTrain = await replicateClient.models.create(
-            replicateAccountName,
-            `${username}/${modelName}`,
+
+        console.log('trainingModel', trainingModel)
+
+        if (!trainingModel.latest_version) {
+            throw new Error('No latest version found for training model')
+        }
+
+        const training = await this.replicateClient.trainings.create(
+            TRAINING_MODEL_USERNAME,
+            TRAINING_MODEL_NAME,
+            trainingModel.latest_version.id,
             {
-                visibility: 'private',
-                hardware: 'gpu-t4',
-                description: 'A fine-tuned FLUX.1 model',
+                destination: `${username}/${modelName}`,
+                input: {
+                    input_images: s3Url,
+                    hf_token: process.env.HF_API_TOKEN,
+                    hf_repo_id: process.env.HF_REPO_ID,
+                },
+                webhook: `${process.env.API_URL}/training/continue?taskToken=${encodeURIComponent(taskToken)}`,
+                webhook_events_filter: ['completed'],
             }
         )
-    }
 
-    console.log('modelToTrain', modelToTrain)
+        console.log('training', training)
 
-    const trainingModel = await replicateClient.models.get(
-        TRAINING_MODEL_USERNAME,
-        TRAINING_MODEL_NAME
-    )
-
-    console.log('trainingModel', trainingModel)
-
-    if (!trainingModel.latest_version) {
-        throw new Error('No latest version found for training model')
-    }
-
-    const training = await replicateClient.trainings.create(
-        TRAINING_MODEL_USERNAME,
-        TRAINING_MODEL_NAME,
-        trainingModel.latest_version.id,
-        {
-            destination: `${username}/${modelName}`,
-            input: {
-                input_images: s3Url,
-                hf_token: process.env.HF_API_TOKEN,
-                hf_repo_id: process.env.HF_REPO_ID,
-            },
-            webhook: `${process.env.API_URL}/training/continue?taskToken=${encodeURIComponent(taskToken)}`,
-            webhook_events_filter: ['completed'],
+        return {
+            trainingId: training.id,
         }
-    )
-
-    console.log('training', training)
-
-    return {
-        trainingId: training.id,
     }
 }
 
-export const handler = stepfunctionErrorHandler(requestTraining)
+const createHandler = () => {
+    const defaultClient = new Replicate({
+        auth: process.env.REPLICATE_API_TOKEN,
+    });
+    return new RequestTraining(defaultClient);
+};
+
+export const handler = stepfunctionErrorHandler((input: any) => {
+    const handler = createHandler();
+    return handler.requestTraining(input);
+});
