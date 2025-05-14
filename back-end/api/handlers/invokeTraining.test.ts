@@ -125,4 +125,34 @@ describe('InvokeTrainingLambda', () => {
             }),
         })
     })
+
+    it('should return a 400 status code if the username or model name is invalid', async () => {
+        const testEvent = createTestEvent('dummy content', {
+            'Content-Type': 'multipart/form-data',
+        })
+        require('lambda-multipart-parser').parse.mockResolvedValue({
+            username: 'test.',
+            modelName: 'test.',
+            files: [],
+        })
+
+        const response = await invokeTraining(testEvent)
+        expect(response.statusCode).toBe(400)
+        expect(JSON.parse(response.body)).toEqual([
+            {
+                validation: 'regex',
+                code: 'invalid_string',
+                message:
+                    'Username must contain only lowercase letters, numbers, dots, or underscores, and cannot start or end with dots or underscores',
+                path: ['username'],
+            },
+            {
+                validation: 'regex',
+                code: 'invalid_string',
+                message:
+                    'Model name must contain only lowercase letters, numbers, dots, or underscores, and cannot start or end with dots or underscores',
+                path: ['modelName'],
+            },
+        ])
+    })
 })

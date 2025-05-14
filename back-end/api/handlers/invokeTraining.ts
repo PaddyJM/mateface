@@ -1,9 +1,24 @@
 import { APIGatewayProxyEvent } from 'aws-lambda'
 import { SFNClient, StartExecutionCommand } from '@aws-sdk/client-sfn'
-import { apiErrorHandler } from '../middleware/apiErrorHandler'
 import uploadToS3 from '../lib/uploadToS3'
 import { parse } from 'lambda-multipart-parser'
 import * as unzipper from 'unzipper'
+import { z, ZodError } from 'zod'
+
+const multipartTextSchema = z.object({
+    username: z
+        .string()
+        .regex(
+            /^[a-z0-9][a-z0-9._]*[a-z0-9]$|^[a-z0-9]$/,
+            'Username must contain only lowercase letters, numbers, dots, or underscores, and cannot start or end with dots or underscores'
+        ),
+    modelName: z
+        .string()
+        .regex(
+            /^[a-z0-9][a-z0-9._]*[a-z0-9]$|^[a-z0-9]$/,
+            'Model name must contain only lowercase letters, numbers, dots, or underscores, and cannot start or end with dots or underscores'
+        ),
+})
 
 const sfnClient = new SFNClient({})
 const stateMachineArn = process.env.STATE_MACHINE_ARN
@@ -11,8 +26,25 @@ const stateMachineArn = process.env.STATE_MACHINE_ARN
 export async function invokeTraining(event: APIGatewayProxyEvent) {
     const parsedEvent = await parse(event)
 
-    const username = parsedEvent.username
-    const modelName = parsedEvent.modelName
+    let multipartText
+    try {
+        multipartText = multipartTextSchema.parse({
+            username: parsedEvent.username,
+            modelName: parsedEvent.modelName,
+        })
+    } catch (error) {
+        console.error(error)
+        if (error instanceof ZodError) {
+            return {
+                statusCode: 400,
+                body: error.message,
+            }
+        }
+        return {
+            statusCode: 500,
+            body: JSON.stringify({ message: 'Internal server error' }),
+        }
+    }
 
     const files = parsedEvent.files
     const file = files.find((file) => file.fieldname === 'file')
@@ -74,14 +106,18 @@ export async function invokeTraining(event: APIGatewayProxyEvent) {
         }
     }
 
-    const s3Url = await uploadToS3(fileBuffer, username, modelName)
+    const s3Url = await uploadToS3(
+        fileBuffer,
+        multipartText.username,
+        multipartText.modelName
+    )
 
     const response = await sfnClient.send(
         new StartExecutionCommand({
             stateMachineArn,
             input: JSON.stringify({
-                username,
-                modelName,
+                username: multipartText.username,
+                modelName: multipartText.modelName,
                 s3Url,
             }),
         })
@@ -96,4 +132,4 @@ export async function invokeTraining(event: APIGatewayProxyEvent) {
     }
 }
 
-export const handler = apiErrorHandler(invokeTraining)
+export const handler = invokeTraining
