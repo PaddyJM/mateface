@@ -5,8 +5,6 @@ import { stepfunctionErrorHandler } from '../middleware/stepfunctionErrorHandler
 const TRAINING_MODEL_USERNAME = 'ostris'
 const TRAINING_MODEL_NAME = 'flux-dev-lora-trainer'
 
-let replicateClient: Replicate
-
 export class RequestTraining {
     private replicateClient: Replicate
     constructor(replicateClient: Replicate) {
@@ -20,15 +18,15 @@ export class RequestTraining {
 
         const replicateAccountName = process.env.REPLICATE_ACCOUNT_NAME!
 
-        let modelToTrain: Model
+        let targetModel: Model
         try {
-            modelToTrain = await this.replicateClient.models.get(
+            targetModel = await this.replicateClient.models.get(
                 replicateAccountName,
                 `${username}/${modelName}`
             )
         } catch (error) {
             console.log(error)
-            modelToTrain = await this.replicateClient.models.create(
+            targetModel = await this.replicateClient.models.create(
                 replicateAccountName,
                 `${username}/${modelName}`,
                 {
@@ -39,23 +37,23 @@ export class RequestTraining {
             )
         }
 
-        console.log('modelToTrain', modelToTrain)
+        console.log('modelToTrain', targetModel)
 
-        const trainingModel = await this.replicateClient.models.get(
+        const loraTrainerModel = await this.replicateClient.models.get(
             TRAINING_MODEL_USERNAME,
             TRAINING_MODEL_NAME
         )
 
-        console.log('trainingModel', trainingModel)
+        console.log('trainingModel', loraTrainerModel)
 
-        if (!trainingModel.latest_version) {
+        if (!loraTrainerModel.latest_version) {
             throw new Error('No latest version found for training model')
         }
 
         const training = await this.replicateClient.trainings.create(
             TRAINING_MODEL_USERNAME,
             TRAINING_MODEL_NAME,
-            trainingModel.latest_version.id,
+            loraTrainerModel.latest_version.id,
             {
                 destination: `${username}/${modelName}`,
                 input: {
