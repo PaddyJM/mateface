@@ -1,16 +1,20 @@
 import { APIGatewayProxyEvent } from 'aws-lambda'
 
-export const createTestEvent = (body: string, headers?: any): APIGatewayProxyEvent => ({
+export const createTestEvent = (
+    body: string,
+    headers?: Record<string, string>,
+    queryStringParameters?: Record<string, string>
+): APIGatewayProxyEvent => ({
     body,
     headers: headers || {
         'Content-Type': 'application/json',
     },
+    queryStringParameters: queryStringParameters || {},
     multiValueHeaders: {},
     httpMethod: 'POST',
     isBase64Encoded: false,
     path: '/invoke-training',
     pathParameters: {},
-    queryStringParameters: {},
     resource: '/invoke-training',
     requestContext: {
         authorizer: {

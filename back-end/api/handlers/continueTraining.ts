@@ -1,35 +1,52 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { SFNClient, SendTaskSuccessCommand, SendTaskFailureCommand } from '@aws-sdk/client-sfn';
+import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
+import {
+    SFNClient,
+    SendTaskSuccessCommand,
+    SendTaskFailureCommand,
+} from '@aws-sdk/client-sfn'
 
-const sfn = new SFNClient({});
+const sfn = new SFNClient({})
 
-export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
+export async function handler(
+    event: APIGatewayProxyEvent
+): Promise<APIGatewayProxyResult> {
     try {
-        const body = JSON.parse(event.body || '{}');
-        const { token, status, error } = body;
+        const body = JSON.parse(event.body || '{}')
+        const { status, error } = body
+
+        const token = event.queryStringParameters?.taskToken
+
+        if (!token) {
+            throw new Error('Task token is required')
+        }
 
         if (status === 'succeeded') {
-            await sfn.send(new SendTaskSuccessCommand({
-                taskToken: token,
-                output: JSON.stringify({ status: 'succeeded' })
-            }));
+            await sfn.send(
+                new SendTaskSuccessCommand({
+                    taskToken: token,
+                    output: JSON.stringify({ status: 'succeeded' }),
+                })
+            )
         } else {
-            await sfn.send(new SendTaskFailureCommand({
-                taskToken: token,
-                error: 'TrainingFailed',
-                cause: error || 'Unknown error'
-            }));
+            await sfn.send(
+                new SendTaskFailureCommand({
+                    taskToken: token,
+                    error: 'TrainingFailed',
+                    cause: error || 'Unknown error',
+                })
+            )
         }
 
         return {
             statusCode: 200,
-            body: JSON.stringify({ message: 'Webhook processed successfully' })
-        };
+            body: '',
+        }
     } catch (error) {
-        console.error('Error processing webhook:', error);
+        console.error('Error processing webhook:', error)
+        // Return a 200 error to avoid retrying the webhook
         return {
-            statusCode: 500,
-            body: JSON.stringify({ message: 'Error processing webhook' })
-        };
+            statusCode: 200,
+            body: '',
+        }
     }
 }
