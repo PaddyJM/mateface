@@ -14,7 +14,7 @@ describe('requestTraining', () => {
             },
         }
     })
-    it('should request training from the replicate API when there is an existing model', async () => {
+    it('should request training from the replicate API when there is an existing model, with the trigger word', async () => {
         const testEvent = {
             username: 'test',
             modelName: 'test',
@@ -64,6 +64,16 @@ describe('requestTraining', () => {
         expect(response).toEqual({
             trainingId: 'test',
         })
+        expect(mockReplicateClient.trainings.create).toHaveBeenCalledWith(
+            'ostris',
+            'flux-dev-lora-trainer',
+            'test',
+            expect.objectContaining({
+                input: expect.objectContaining({
+                    trigger_word: 'test-test',
+                }),
+            })
+        )
     })
 
     it('should request training from the replicate API when there is no existing model', async () => {

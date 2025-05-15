@@ -60,6 +60,7 @@ export class RequestTraining {
                     input_images: s3Url,
                     hf_token: process.env.HF_API_TOKEN,
                     hf_repo_id: process.env.HF_REPO_ID,
+                    trigger_word: replicateModelName,
                 },
                 webhook: `${process.env.API_URL}/training/continue?taskToken=${encodeURIComponent(taskToken)}`,
                 webhook_events_filter: ['completed'],
