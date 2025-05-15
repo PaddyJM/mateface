@@ -1,9 +1,9 @@
-import { APIGatewayProxyEventV2, APIGatewayProxyResultV2 } from 'aws-lambda';
+import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import { SFNClient, DescribeExecutionCommand } from '@aws-sdk/client-sfn';
 
 const sfn = new SFNClient({});
 
-export async function handler(event: APIGatewayProxyEventV2): Promise<APIGatewayProxyResultV2> {
+export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
     try {
         const executionArn = event.queryStringParameters?.executionArn;
         
