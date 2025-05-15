@@ -1,6 +1,6 @@
 import { APIGatewayProxyEvent } from 'aws-lambda'
 
-export const createTestEvent = (body: any, headers?: any): APIGatewayProxyEvent => ({
+export const createTestEvent = (body: string, headers?: any): APIGatewayProxyEvent => ({
     body,
     headers: headers || {
         'Content-Type': 'application/json',
