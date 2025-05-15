@@ -23,7 +23,7 @@ const multipartTextSchema = z.object({
 const sfnClient = new SFNClient({})
 const stateMachineArn = process.env.STATE_MACHINE_ARN
 
-export async function invokeTraining(event: APIGatewayProxyEvent) {
+export async function handler(event: APIGatewayProxyEvent) {
     const parsedEvent = await parse(event)
 
     let multipartText
@@ -132,4 +132,3 @@ export async function invokeTraining(event: APIGatewayProxyEvent) {
     }
 }
 
-export const handler = invokeTraining

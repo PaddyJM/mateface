@@ -1,4 +1,4 @@
-import { invokeTraining } from './invokeTraining'
+import { handler } from './invokeTraining'
 import { createTestEvent } from '../lib/apiGatewayTestEvent'
 import { mockClient } from 'aws-sdk-client-mock'
 import { SFNClient, StartExecutionCommand } from '@aws-sdk/client-sfn'
@@ -46,7 +46,7 @@ describe('InvokeTrainingLambda', () => {
             'Content-Type': 'multipart/form-data',
         })
 
-        expect(await invokeTraining(testEvent)).toEqual({
+        expect(await handler(testEvent)).toEqual({
             statusCode: 200,
             body: JSON.stringify({
                 message: 'Training invoked',
@@ -66,7 +66,7 @@ describe('InvokeTrainingLambda', () => {
             'Content-Type': 'multipart/form-data',
         })
 
-        expect(await invokeTraining(testEvent)).toEqual({
+        expect(await handler(testEvent)).toEqual({
             statusCode: 400,
             body: JSON.stringify({ message: 'No file found' }),
         })
@@ -89,7 +89,7 @@ describe('InvokeTrainingLambda', () => {
             'Content-Type': 'multipart/form-data',
         })
 
-        expect(await invokeTraining(testEvent)).toEqual({
+        expect(await handler(testEvent)).toEqual({
             statusCode: 400,
             body: JSON.stringify({
                 message: 'Invalid file format. Please upload a ZIP file.',
@@ -117,7 +117,7 @@ describe('InvokeTrainingLambda', () => {
             'Content-Type': 'multipart/form-data',
         })
 
-        expect(await invokeTraining(testEvent)).toEqual({
+        expect(await handler(testEvent)).toEqual({
             statusCode: 400,
             body: JSON.stringify({
                 message:
@@ -136,7 +136,7 @@ describe('InvokeTrainingLambda', () => {
             files: [],
         })
 
-        const response = await invokeTraining(testEvent)
+        const response = await handler(testEvent)
         expect(response.statusCode).toBe(400)
         expect(JSON.parse(response.body)).toEqual([
             {
