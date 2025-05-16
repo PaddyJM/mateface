@@ -119,3 +119,18 @@ paths:
                                         type: string
                             example:
                                 error: Failed to get execution status
+    /training/continue:
+        post:
+            summary: Continue a training job
+            description: Continue a training job
+            parameters: 
+                - name: taskToken
+                  in: query
+                  required: true
+                  type: string
+                  schema:
+                    type: string
+            responses:
+                '201':
+                    description: Training job continued
+

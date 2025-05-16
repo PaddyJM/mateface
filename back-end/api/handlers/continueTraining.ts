@@ -45,7 +45,7 @@ export async function handler(
         console.error('Error processing webhook:', error)
         // Return a 200 error to avoid retrying the webhook
         return {
-            statusCode: 200,
+            statusCode: 201,
             body: '',
         }
     }

@@ -35,7 +35,7 @@ describe('ContinueTrainingLambda', () => {
         )
         const response = await handler(testEvent)
 
-        expect(response.statusCode).toEqual(200)
+        expect(response.statusCode).toEqual(201)
         expect(consoleSpy).toHaveBeenCalledWith(
             'Error processing webhook:',
             new Error('Task token is required')
