@@ -1,5 +1,5 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
-import { SFNClient, DescribeExecutionCommand } from '@aws-sdk/client-sfn';
+import { SFNClient, DescribeExecutionCommand, ExecutionDoesNotExist } from '@aws-sdk/client-sfn';
 
 const sfn = new SFNClient({});
 
@@ -10,7 +10,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         if (!executionArn) {
             return {
                 statusCode: 400,
-                body: JSON.stringify({ error: 'executionArn is required' })
+                body: JSON.stringify({ error: 'executionArn is required and must be provided as a query parameter' })
             };
         }
 
@@ -20,7 +20,6 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
         const response = await sfn.send(command);
         
-        // The output will contain any data passed to Succeed state
         const output = response.output ? JSON.parse(response.output) : null;
 
         return {
@@ -34,6 +33,14 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         };
     } catch (error) {
         console.error('Error getting execution status:', error);
+
+        if (error instanceof ExecutionDoesNotExist) {
+            return {
+                statusCode: 400,
+                body: JSON.stringify({ error: 'No state machine found with the provided executionArn' })
+            };
+        }
+
         return {
             statusCode: 500,
             body: JSON.stringify({ error: 'Failed to get execution status' })
