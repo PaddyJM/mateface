@@ -7,13 +7,6 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
     try {
         const executionArn = event.pathParameters?.executionArn;
         
-        if (!executionArn) {
-            return {
-                statusCode: 400,
-                body: JSON.stringify({ error: 'executionArn is required and must be provided as a query parameter' })
-            };
-        }
-
         const command = new DescribeExecutionCommand({
             executionArn
         });
@@ -36,7 +29,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
 
         if (error instanceof ExecutionDoesNotExist) {
             return {
-                statusCode: 400,
+                statusCode: 404,
                 body: JSON.stringify({ error: 'No state machine found with the provided executionArn' })
             };
         }

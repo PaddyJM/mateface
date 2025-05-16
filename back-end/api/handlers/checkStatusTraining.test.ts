@@ -32,17 +32,6 @@ describe('CheckStatusTrainingLambda', () => {
         )
     })
 
-    it('should return a 400 status code if the executionArn is not provided', async () => {
-        const testEvent = createTestEvent('', {}, {}, {})
-        const response = await handler(testEvent)
-        expect(response.statusCode).toEqual(400)
-        expect(response.body).toEqual(
-            JSON.stringify({
-                error: 'executionArn is required and must be provided as a query parameter',
-            })
-        )
-    })
-
     it('should return a 400 status code if not state machine is found using the executionArn', async () => {
         const testEvent = createTestEvent('', {}, {}, { executionArn: 'test' })
         sfnMock.on(DescribeExecutionCommand).rejects(
@@ -50,12 +39,12 @@ describe('CheckStatusTrainingLambda', () => {
                 message:
                     'No state machine found with the provided executionArn',
                 $metadata: {
-                    httpStatusCode: 400,
+                    httpStatusCode: 404,
                 },
             })
         )
         const response = await handler(testEvent)
-        expect(response.statusCode).toEqual(400)
+        expect(response.statusCode).toEqual(404)
         expect(response.body).toEqual(
             JSON.stringify({
                 error: 'No state machine found with the provided executionArn',

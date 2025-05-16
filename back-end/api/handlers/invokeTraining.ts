@@ -24,6 +24,7 @@ const sfnClient = new SFNClient({})
 const stateMachineArn = process.env.STATE_MACHINE_ARN
 
 export async function handler(event: APIGatewayProxyEvent) {
+    try {
     const parsedEvent = await parse(event)
 
     let multipartText
@@ -127,8 +128,14 @@ export async function handler(event: APIGatewayProxyEvent) {
         statusCode: 200,
         body: JSON.stringify({
             message: 'Training invoked',
-            stepFunctionExecutionArn: response.executionArn,
-        }),
+                stepFunctionExecutionArn: response.executionArn,
+            }),
+        }
+    } catch (error) {
+        console.error('Unhandled error', error)
+        return {
+            statusCode: 500,
+            body: JSON.stringify({ message: 'Internal server error. Please contact your administrator.' }),
+        }
     }
 }
-

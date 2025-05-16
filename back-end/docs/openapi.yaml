@@ -72,3 +72,50 @@ paths:
                                         type: string
                             example:
                                 message: Internal server error. Please contact your administrator.
+    /training/{executionArn}/status:
+        get:
+            summary: Check the status of a training job
+            description: Check the status of a training job
+            parameters:
+                - name: executionArn
+                  in: path
+                  required: true
+                  type: string
+            responses:
+                '200':
+                    description: Training job status
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    status:
+                                        type: string
+                                    output:
+                                        type: object
+                                    startDate:
+                                        type: date
+                                    stopDate:
+                                        type: date
+                '404':
+                    description: Training job not found
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    error:
+                                        type: string
+                            example:
+                                error: No state machine found with the provided executionArn
+                '500':
+                    description: Internal server error
+                    content:
+                        application/json:
+                            schema:
+                                type: object
+                                properties:
+                                    error:
+                                        type: string
+                            example:
+                                error: Failed to get execution status
