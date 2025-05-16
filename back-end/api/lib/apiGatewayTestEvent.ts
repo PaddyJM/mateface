@@ -3,7 +3,8 @@ import { APIGatewayProxyEvent } from 'aws-lambda'
 export const createTestEvent = (
     body: string,
     headers?: Record<string, string>,
-    queryStringParameters?: Record<string, string>
+    queryStringParameters?: Record<string, string>,
+    pathParameters?: Record<string, string>
 ): APIGatewayProxyEvent => ({
     body,
     headers: headers || {
@@ -14,7 +15,7 @@ export const createTestEvent = (
     httpMethod: 'POST',
     isBase64Encoded: false,
     path: '/invoke-training',
-    pathParameters: {},
+    pathParameters: pathParameters || {},
     resource: '/invoke-training',
     requestContext: {
         authorizer: {

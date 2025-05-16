@@ -5,7 +5,7 @@ const sfn = new SFNClient({});
 
 export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> {
     try {
-        const executionArn = event.queryStringParameters?.executionArn;
+        const executionArn = event.pathParameters?.executionArn;
         
         if (!executionArn) {
             return {
@@ -19,7 +19,7 @@ export async function handler(event: APIGatewayProxyEvent): Promise<APIGatewayPr
         });
 
         const response = await sfn.send(command);
-        
+
         const output = response.output ? JSON.parse(response.output) : null;
 
         return {

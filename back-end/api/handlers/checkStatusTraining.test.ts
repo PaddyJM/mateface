@@ -11,7 +11,7 @@ const sfnMock = mockClient(SFNClient)
 
 describe('CheckStatusTrainingLambda', () => {
     it('should return a 200 status code and the execution status', async () => {
-        const testEvent = createTestEvent('', {}, { executionArn: 'test' })
+        const testEvent = createTestEvent('', {}, {}, { executionArn: 'test' })
         const startDate = new Date()
         const stopDate = new Date()
         sfnMock.on(DescribeExecutionCommand).resolves({
@@ -33,7 +33,7 @@ describe('CheckStatusTrainingLambda', () => {
     })
 
     it('should return a 400 status code if the executionArn is not provided', async () => {
-        const testEvent = createTestEvent('', {}, {})
+        const testEvent = createTestEvent('', {}, {}, {})
         const response = await handler(testEvent)
         expect(response.statusCode).toEqual(400)
         expect(response.body).toEqual(
@@ -44,7 +44,7 @@ describe('CheckStatusTrainingLambda', () => {
     })
 
     it('should return a 400 status code if not state machine is found using the executionArn', async () => {
-        const testEvent = createTestEvent('', {}, { executionArn: 'test' })
+        const testEvent = createTestEvent('', {}, {}, { executionArn: 'test' })
         sfnMock.on(DescribeExecutionCommand).rejects(
             new ExecutionDoesNotExist({
                 message:
