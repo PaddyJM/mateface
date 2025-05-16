@@ -104,7 +104,10 @@ export class MatefaceBackEndStack extends cdk.Stack {
             `${idPrefix}TrainingStateMachine`,
             {
                 definition: requestTrainingLambdaDefinition.next(
-                    new cdk.aws_stepfunctions.Choice(this, 'CheckTrainingWebhookStatus')
+                    new cdk.aws_stepfunctions.Choice(
+                        this,
+                        'CheckTrainingWebhookStatus'
+                    )
                         .when(
                             cdk.aws_stepfunctions.Condition.stringEquals(
                                 '$.status',
@@ -157,20 +160,26 @@ export class MatefaceBackEndStack extends cdk.Stack {
             })
         )
 
-        const checkStatusTrainingLambda = new cdk.aws_lambda_nodejs.NodejsFunction(
-            this,
-            `${idPrefix}CheckStatusTrainingLambda`,
-            {
-                entry: path.join(__dirname, './api/handlers/checkStatusTraining.ts'),
-                handler: 'handler',
-                runtime,
-            }
-        )
+        const checkStatusTrainingLambda =
+            new cdk.aws_lambda_nodejs.NodejsFunction(
+                this,
+                `${idPrefix}CheckStatusTrainingLambda`,
+                {
+                    entry: path.join(
+                        __dirname,
+                        './api/handlers/checkStatusTraining.ts'
+                    ),
+                    handler: 'handler',
+                    runtime,
+                }
+            )
 
         checkStatusTrainingLambda.addToRolePolicy(
             new cdk.aws_iam.PolicyStatement({
                 actions: ['states:DescribeExecution'],
-                resources: [trainingStateMachine.stateMachineArn],
+                resources: [
+                    `arn:aws:states:${this.region}:${this.account}:execution:TrainingStateMachine:*`,
+                ],
             })
         )
 
